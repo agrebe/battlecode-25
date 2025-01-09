@@ -152,6 +152,10 @@ public class RobotPlayer {
         // Search for a nearby ruin to complete.
         MapLocation curRuin = null;
         for (MapLocation ruinLoc : rc.senseNearbyRuins(-1)) {
+          // upgrade towers if we have huge amounts of gold
+          if (rc.getMoney() > 6000 && rc.senseNearbyRobots(ruinLoc, 0, myTeam).length == 1)
+            if (rc.canUpgradeTower(ruinLoc))
+              rc.upgradeTower(ruinLoc);
           // ignore those that already have a tower
           if ((rc.senseNearbyRobots(ruinLoc, 0, myTeam).length == 0) && (rc.senseNearbyRobots(ruinLoc, 0, enemyTeam).length == 0)) {
             // see if this is closer than curRuin
