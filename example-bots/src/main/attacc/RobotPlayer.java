@@ -227,6 +227,26 @@ public class RobotPlayer {
      * This code is wrapped inside the infinite loop in run(), so it is called once per turn.
      */
     public static void runMopper(RobotController rc) throws GameActionException{
+      MapLocation me = rc.getLocation();
+      // find nearest enemy robot and move toward them (but not onto enemy color)
+      MapLocation closestEnemy = null;
+      for (RobotInfo enemy : rc.senseNearbyRobots(-1, rc.getTeam().opponent()))
+        if (closestEnemy == null || enemy.location.distanceSquaredTo(me) < closestEnemy.distanceSquaredTo(me))
+          closestEnemy = enemy.location;
+      if (closestEnemy == null) {
+        // set closest enemy to be enemy paint rather than enemy robot
+        for (MapInfo enemy : rc.senseNearbyMapInfos())
+          if ((closestEnemy == null || enemy.getMapLocation().distanceSquaredTo(me) < closestEnemy.distanceSquaredTo(me))
+              && enemy.getPaint().isEnemy())
+            closestEnemy = enemy.getMapLocation();
+      }
+      if (closestEnemy != null) {
+        // try to move toward closest enemy without walking off paint
+        Direction dir = me.directionTo(closestEnemy);
+        if (rc.canMove(dir) && rc.senseMapInfo(rc.getLocation().add(dir)).getPaint().isAlly())
+            rc.move(dir);
+      }
+
         // Move and attack randomly.
         // Don't move to squares unless they match our paint color
         Direction dir = directions[rng.nextInt(directions.length)];
