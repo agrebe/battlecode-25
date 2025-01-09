@@ -136,6 +136,16 @@ public class RobotPlayer {
         }
 
         // TODO: can we attack other bots?
+        // start with an AOE attack
+        if (rc.canAttack(null)) rc.attack(null);
+        // find an enemy unit in range and attack that
+        // ideally attack min-health enemy
+        RobotInfo bestTarget = null;
+        for (RobotInfo enemy : rc.senseNearbyRobots(rc.getType().actionRadiusSquared, rc.getTeam().opponent()))
+          if (rc.canAttack(enemy.location) && (bestTarget == null || bestTarget.health > enemy.health))
+            bestTarget = enemy;
+        if (bestTarget != null) 
+          rc.attack(bestTarget.location);
     }
 
 
@@ -153,7 +163,7 @@ public class RobotPlayer {
         MapLocation curRuin = null;
         for (MapLocation ruinLoc : rc.senseNearbyRuins(-1)) {
           // upgrade towers if we have huge amounts of gold
-          if (rc.getMoney() > 6000 && rc.senseNearbyRobots(ruinLoc, 0, myTeam).length == 1)
+          if (rc.getMoney() > 3000 && rc.senseNearbyRobots(ruinLoc, 0, myTeam).length == 1)
             if (rc.canUpgradeTower(ruinLoc))
               rc.upgradeTower(ruinLoc);
           // ignore those that already have a tower
@@ -169,7 +179,10 @@ public class RobotPlayer {
             MapLocation shouldBeMarked = curRuin.subtract(dir);
             // randomly choose paint or money tower
             UnitType tower = UnitType.LEVEL_ONE_PAINT_TOWER;
-            if (rng.nextInt(2) == 1) tower = UnitType.LEVEL_ONE_MONEY_TOWER;
+            // 60% of towers are money initially
+            if (rng.nextInt(10) >= 4) tower = UnitType.LEVEL_ONE_MONEY_TOWER;
+            // prioritize paint towers if we have > 5000 gold
+            if (rc.getMoney() > 5000) tower = UnitType.LEVEL_THREE_PAINT_TOWER;
             if (rc.senseMapInfo(shouldBeMarked).getMark() == PaintType.EMPTY && rc.canMarkTowerPattern(tower, curRuin)){
                 rc.markTowerPattern(tower, curRuin);
                 System.out.println("Trying to build a tower at " + curRuin);
@@ -198,6 +211,12 @@ public class RobotPlayer {
             }
             // try to move toward ruin if more than sqrt(8) away
             if (me.distanceSquaredTo(curRuin) > 8 && rc.canMove(dir)) rc.move(dir);
+        }
+        // highest attack priority -- attack a tower
+        for (RobotInfo enemy : rc.senseNearbyRobots(rc.getType().actionRadiusSquared, enemyTeam)) {
+          MapLocation enemyLoc = enemy.location;
+          if (rc.canSenseLocation(enemyLoc) && rc.senseMapInfo(enemyLoc).hasRuin())
+            if (rc.canAttack(enemyLoc)) rc.attack(enemyLoc);
         }
 //        // try to move in a random location
 //        {
@@ -229,14 +248,13 @@ public class RobotPlayer {
             if (rc.canAttack(newLoc) && newTile.getPaint() == PaintType.EMPTY)
               rc.attack(newLoc);
           }
-          /*
-          // try to paint farther-away tiles
+          // try to paint farther-away tiles where friends are standing
           for (MapInfo info : rc.senseNearbyMapInfos(UnitType.SOLDIER.actionRadiusSquared))
-            if (info.getPaint() == PaintType.EMPTY && rc.canAttack(info.getMapLocation())) {
+            if (info.getPaint() == PaintType.EMPTY && rc.canAttack(info.getMapLocation())
+                && rc.getRoundNum() > 1800) {
               rc.attack(info.getMapLocation());
               break;
             }
-          */
         }
     }
 
@@ -264,6 +282,10 @@ public class RobotPlayer {
         Direction dir = me.directionTo(closestEnemy);
         if (rc.canMove(dir) && rc.senseMapInfo(rc.getLocation().add(dir)).getPaint().isAlly())
             rc.move(dir);
+        // can move into non-ally paint if necessary for attack
+        if (rc.canMove(dir) && me.distanceSquaredTo(closestEnemy) >= 4 && me.distanceSquaredTo(closestEnemy) <= 8
+            && rc.getActionCooldownTurns() == 0 && rc.senseNearbyRobots(-1, rc.getTeam()).length > rc.senseNearbyRobots(-1, rc.getTeam().opponent()).length * 2)
+          rc.move(dir);
       }
 
         // Move and attack randomly.
@@ -300,6 +322,19 @@ public class RobotPlayer {
         }
         // We can also move our code into different methods or classes to better organize it!
         updateEnemyRobots(rc);
+        // if we can't attack, then transfer paint
+        // transfer paint if we have more than 67% paint and target has <50%
+        /*
+        if (rc.getPaint() > rc.getType().paintCapacity / 2)
+          for (RobotInfo friend : rc.senseNearbyRobots(2, rc.getTeam()))
+            if (friend.paintAmount < friend.type.paintCapacity / 2 && friend.type == UnitType.SOLDIER) {
+              int transferAmount = Math.min(rc.getPaint() - rc.getType().paintCapacity / 2,
+                                            friend.type.paintCapacity / 2 - friend.paintAmount);
+              if (transferAmount > 10 && rc.canTransferPaint(friend.location, transferAmount))
+                rc.transferPaint(friend.location, transferAmount);
+            }
+        */
+              
     }
 
     public static void updateEnemyRobots(RobotController rc) throws GameActionException{
