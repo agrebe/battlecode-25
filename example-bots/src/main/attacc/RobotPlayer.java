@@ -108,6 +108,18 @@ public class RobotPlayer {
      * This code is wrapped inside the infinite loop in run(), so it is called once per turn.
      */
     public static void runTower(RobotController rc) throws GameActionException{
+        // TODO: can we attack other bots?
+        // start with an AOE attack
+        if (rc.canAttack(null)) rc.attack(null);
+        // find an enemy unit in range and attack that
+        // ideally attack min-health enemy
+        RobotInfo bestTarget = null;
+        for (RobotInfo enemy : rc.senseNearbyRobots(rc.getType().actionRadiusSquared, rc.getTeam().opponent()))
+          if (rc.canAttack(enemy.location) && (bestTarget == null || bestTarget.health > enemy.health))
+            bestTarget = enemy;
+        if (bestTarget != null) 
+          rc.attack(bestTarget.location);
+
         // don't build if we have < 200 paint (since otherwise we will never build soldiers)
         if (rc.getPaint() < 200) return;
         // Pick a direction to build in.
@@ -135,17 +147,6 @@ public class RobotPlayer {
             System.out.println("Tower received message: '#" + m.getSenderID() + " " + m.getBytes());
         }
 
-        // TODO: can we attack other bots?
-        // start with an AOE attack
-        if (rc.canAttack(null)) rc.attack(null);
-        // find an enemy unit in range and attack that
-        // ideally attack min-health enemy
-        RobotInfo bestTarget = null;
-        for (RobotInfo enemy : rc.senseNearbyRobots(rc.getType().actionRadiusSquared, rc.getTeam().opponent()))
-          if (rc.canAttack(enemy.location) && (bestTarget == null || bestTarget.health > enemy.health))
-            bestTarget = enemy;
-        if (bestTarget != null) 
-          rc.attack(bestTarget.location);
     }
 
 
