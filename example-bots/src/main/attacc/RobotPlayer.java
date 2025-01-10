@@ -126,12 +126,13 @@ public class RobotPlayer {
         Direction dir = directions[rng.nextInt(directions.length)];
         MapLocation nextLoc = rc.getLocation().add(dir);
         // Pick a random robot type to build.
-        int robotType = rng.nextInt(3);
+        int robotType = rng.nextInt(2);
         if (robotType == 0 && rc.canBuildRobot(UnitType.SOLDIER, nextLoc)){
             rc.buildRobot(UnitType.SOLDIER, nextLoc);
             System.out.println("BUILT A SOLDIER");
         }
-        else if (robotType == 1 && rc.canBuildRobot(UnitType.MOPPER, nextLoc)){
+        // build mopper (but only on friendly territory)
+        else if (robotType == 1 && rc.canBuildRobot(UnitType.MOPPER, nextLoc) && rc.senseMapInfo(nextLoc).getPaint().isAlly()){
             rc.buildRobot(UnitType.MOPPER, nextLoc);
             System.out.println("BUILT A MOPPER");
         }
@@ -281,6 +282,15 @@ public class RobotPlayer {
       if (closestEnemy != null) {
         // try to move toward closest enemy without walking off paint
         Direction dir = me.directionTo(closestEnemy);
+        // if closest enemy is a tower, run away from it rather than towards it
+        RobotInfo enemyRobot = rc.senseRobotAtLocation(closestEnemy);
+        // if this is not null (enemy is robot and not paint), check if it's a tower
+        if (enemyRobot != null) {
+          UnitType enemyType = enemyRobot.getType();
+          if (enemyType != UnitType.MOPPER && enemyType != UnitType.SOLDIER && enemyType != UnitType.MOPPER) {
+            dir = dir.opposite();
+          }
+        }
         if (rc.canMove(dir) && rc.senseMapInfo(rc.getLocation().add(dir)).getPaint().isAlly())
             rc.move(dir);
         // can move into non-ally paint if necessary for attack
