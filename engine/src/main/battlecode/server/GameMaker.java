@@ -380,7 +380,7 @@ public class GameMaker {
 
             matchHeaders.add(events.size() - 1);
 
-            clearData();
+            clearMatchData();
         }
 
         public void makeMatchFooter(Team winTeam, DominationFactor winType, int totalRounds,
@@ -477,7 +477,7 @@ public class GameMaker {
                 return EventWrapper.createEventWrapper(builder, Event.Round, round);
             });
 
-            clearData();
+            clearRoundData();
         }
 
         public void startTurn(int robotID){
@@ -516,6 +516,14 @@ public class GameMaker {
             });
         }
 
+        // Moppers send damage actions when removing paint for per turn visualization
+        public void addRemovePaintAction(int affectedRobotID, int amountRemoved){
+            applyToBuilders((builder) -> {
+                int action = DamageAction.createDamageAction(builder, affectedRobotID, amountRemoved);
+                builder.addAction(action, Action.DamageAction);
+            });
+        }
+        
         /// Visually indicate a tile has been painted
         public void addPaintAction(MapLocation loc, boolean isSecondary){ 
             applyToBuilders((builder) -> {
@@ -581,6 +589,15 @@ public class GameMaker {
         public void addTransferAction(int otherRobotID, int amount){
             applyToBuilders((builder) -> {
                 int action = TransferAction.createTransferAction(builder, otherRobotID, amount);
+                builder.addAction(action, Action.TransferAction);
+            });
+        }
+
+        //IMPORTANT: We are overloading the transferAction for this and must
+        // maintain invariant that 0 resource transfers are not allowed by engine.
+        public void addCompleteResourcePatternAction(MapLocation loc){
+            applyToBuilders((builder) -> {
+                int action = TransferAction.createTransferAction(builder, locationToInt(loc), 0);
                 builder.addAction(action, Action.TransferAction);
             });
         }
@@ -678,12 +695,20 @@ public class GameMaker {
             return loc.x + this.currentMapWidth * loc.y;
         }
 
-        private void clearData() {
+        private void clearRoundData() {
             this.teamIDs.clear();
             this.teamMoneyAmounts.clear();
             this.teamPaintCoverageAmounts.clear();
             this.teamResourcePatternAmounts.clear();
             this.diedIds.clear();
+        }
+
+        private void clearMatchData() {
+            clearRoundData();
+            this.timelineMarkerTeams.clear();
+            this.timelineMarkerColors.clear();
+            this.timelineMarkerLabels.clear();
+            this.timelineMarkerRounds.clear();
         }
     }
 
