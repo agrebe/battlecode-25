@@ -232,7 +232,8 @@ public class RobotPlayer {
         {
           Direction dir = directions[rng.nextInt(directions.length)];
           MapLocation nextLoc = rc.getLocation().add(dir);
-          if (rc.canMove(dir)){
+          // don't move onto enemy paint
+          if (rc.canMove(dir) && !rc.senseMapInfo(nextLoc).getPaint().isEnemy()){
               rc.move(dir);
           }
         }
