@@ -242,6 +242,10 @@ public class RobotPlayer {
           if (rc.canMove(dir) && !rc.senseMapInfo(nextLoc).getPaint().isEnemy()){
               rc.move(dir);
           }
+          // bias toward moving toward center of map
+          dir = towardCenter;
+          if (rc.canMove(dir) && rc.senseMapInfo(rc.getLocation().add(dir)).getPaint().isAlly())
+              rc.move(dir);
         }
         // Try to paint beneath us as we walk to avoid paint penalties.
         // Avoiding wasting paint by re-painting our own tiles.
