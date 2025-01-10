@@ -22,6 +22,8 @@ public class RobotPlayer {
      * these variables are static, in Battlecode they aren't actually shared between your robots.
      */
     static int turnCount = 0;
+    // direction from initial location to center
+    static Direction towardCenter = null;
 
     /**
      * A random number generator.
@@ -58,6 +60,10 @@ public class RobotPlayer {
 
         // You can also use indicators to save debug notes in replays.
         rc.setIndicatorString("Hello world!");
+
+        // set initial direction
+        MapLocation center = new MapLocation(rc.getMapWidth() / 2, rc.getMapHeight() / 2);
+        towardCenter = rc.getLocation().directionTo(center);
 
         while (true) {
             // This code runs during the entire lifespan of the robot, which is why it is in an infinite
@@ -305,6 +311,12 @@ public class RobotPlayer {
         Direction dir = directions[rng.nextInt(directions.length)];
         if (rc.canMove(dir) && rc.senseMapInfo(rc.getLocation().add(dir)).getPaint().isAlly()){
             rc.move(dir);
+        } else {
+          // bias toward moving toward center of map
+          //MapLocation center = new MapLocation(rc.getMapWidth() / 2, rc.getMapHeight() / 2);
+          dir = towardCenter;
+          if (rc.canMove(dir) && rc.senseMapInfo(rc.getLocation().add(dir)).getPaint().isAlly())
+              rc.move(dir);
         }
         // find location with enemy paint and/or robot to attack
         // first try to attack
