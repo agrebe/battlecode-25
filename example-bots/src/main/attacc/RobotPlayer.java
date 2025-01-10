@@ -234,6 +234,13 @@ public class RobotPlayer {
 //              rc.move(dir);
 //        }
 
+        // run away from nearby moppers
+        for (RobotInfo enemy : rc.senseNearbyRobots(9, enemyTeam)) {
+          if (enemy.type == UnitType.MOPPER) {
+            Direction dir = enemy.location.directionTo(me);
+            if (rc.canMove(dir)) rc.move(dir);
+          }
+        }
         // Move and attack randomly if no objective.
         {
           Direction dir = directions[rng.nextInt(directions.length)];
@@ -293,6 +300,11 @@ public class RobotPlayer {
       if (closestEnemy != null) {
         // try to move toward closest enemy without walking off paint
         Direction dir = me.directionTo(closestEnemy);
+        // if we're already in range, attack first and then walk away
+        if (me.distanceSquaredTo(closestEnemy) <= 2) {
+          if (rc.canAttack(closestEnemy)) rc.attack(closestEnemy);
+          if (rc.canMove(dir.opposite())) rc.move(dir.opposite());
+        }
         // if closest enemy is a tower, run away from it rather than towards it
         RobotInfo enemyRobot = rc.senseRobotAtLocation(closestEnemy);
         // if this is not null (enemy is robot and not paint), check if it's a tower
