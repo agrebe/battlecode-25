@@ -299,7 +299,8 @@ public class RobotPlayer {
       // find nearest enemy robot and move toward them (but not onto enemy color)
       MapLocation closestEnemy = null;
       for (RobotInfo enemy : rc.senseNearbyRobots(-1, rc.getTeam().opponent()))
-        if (closestEnemy == null || enemy.location.distanceSquaredTo(me) < closestEnemy.distanceSquaredTo(me))
+        if (closestEnemy == null || enemy.location.distanceSquaredTo(me) < closestEnemy.distanceSquaredTo(me)
+            && enemy.paintAmount > 0)
           closestEnemy = enemy.location;
       if (closestEnemy == null) {
         // set closest enemy to be enemy paint rather than enemy robot
@@ -328,7 +329,8 @@ public class RobotPlayer {
         if (rc.canMove(dir) && rc.senseMapInfo(rc.getLocation().add(dir)).getPaint().isAlly())
             rc.move(dir);
         // can move into non-ally paint if necessary for attack
-        if (rc.canMove(dir) && me.distanceSquaredTo(closestEnemy) >= 4 && me.distanceSquaredTo(closestEnemy) <= 8
+        // only do this if attacking unit (not paint)
+        if (rc.canMove(dir) && me.distanceSquaredTo(closestEnemy) >= 4 && me.distanceSquaredTo(closestEnemy) <= 8 && rc.isLocationOccupied(closestEnemy)
             && rc.getActionCooldownTurns() == 0 && rc.senseNearbyRobots(-1, rc.getTeam()).length > rc.senseNearbyRobots(-1, rc.getTeam().opponent()).length * 2)
           rc.move(dir);
       }
@@ -353,9 +355,12 @@ public class RobotPlayer {
           if (!rc.canSenseLocation(nextLoc)) continue;
           if (!rc.canAttack(nextLoc)) continue;
           if (rc.senseNearbyRobots(nextLoc, 0, enemy).length > 0) {
-            rc.attack(nextLoc);
-            rc.setIndicatorString("Attacking enemy robot");
-            return;
+            // only attack robots wtih paint
+            if (rc.senseRobotAtLocation(nextLoc).paintAmount > 0) {
+              rc.attack(nextLoc);
+              rc.setIndicatorString("Attacking enemy robot");
+              return;
+            }
           }
         }
         // then try to remove enemy paint
