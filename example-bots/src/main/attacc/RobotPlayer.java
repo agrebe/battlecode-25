@@ -45,6 +45,14 @@ public class RobotPlayer {
         Direction.WEST,
         Direction.NORTHWEST,
     };
+    public static boolean isTower(UnitType t) throws GameActionException {
+      return (t == UnitType.LEVEL_ONE_PAINT_TOWER || t == UnitType.LEVEL_TWO_PAINT_TOWER || t == UnitType.LEVEL_THREE_PAINT_TOWER
+              || t == UnitType.LEVEL_ONE_MONEY_TOWER || t == UnitType.LEVEL_TWO_MONEY_TOWER || t == UnitType.LEVEL_THREE_MONEY_TOWER
+              || t == UnitType.LEVEL_ONE_DEFENSE_TOWER || t == UnitType.LEVEL_TWO_DEFENSE_TOWER || t == UnitType.LEVEL_THREE_DEFENSE_TOWER);
+    }
+    public static boolean isDefenseTower(UnitType t) throws GameActionException {
+      return (t == UnitType.LEVEL_ONE_DEFENSE_TOWER || t == UnitType.LEVEL_TWO_DEFENSE_TOWER || t == UnitType.LEVEL_THREE_DEFENSE_TOWER);
+    }
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
