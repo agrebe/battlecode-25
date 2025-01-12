@@ -24,6 +24,7 @@ public class RobotPlayer {
     static int turnCount = 0;
     // direction from initial location to center
     static Direction towardCenter = null;
+    static boolean producedUnit = false;
 
     /**
      * A random number generator.
@@ -127,7 +128,7 @@ public class RobotPlayer {
           rc.attack(bestTarget.location);
 
         // don't build if we have < 200 paint (since otherwise we will never build soldiers)
-        if (rc.getPaint() < 200) return;
+        if (rc.getPaint() < 200 && (rc.getType() != UnitType.LEVEL_ONE_MONEY_TOWER)) return;
         // Pick a direction to build in.
         Direction dir = directions[rng.nextInt(directions.length)];
         MapLocation nextLoc = rc.getLocation().add(dir);
@@ -136,11 +137,13 @@ public class RobotPlayer {
         if (robotType == 0 && rc.canBuildRobot(UnitType.SOLDIER, nextLoc)){
             rc.buildRobot(UnitType.SOLDIER, nextLoc);
             System.out.println("BUILT A SOLDIER");
+            producedUnit = true;
         }
         // build mopper (but only on friendly territory)
         else if (robotType == 1 && rc.canBuildRobot(UnitType.MOPPER, nextLoc) && rc.senseMapInfo(nextLoc).getPaint().isAlly()){
             rc.buildRobot(UnitType.MOPPER, nextLoc);
             System.out.println("BUILT A MOPPER");
+            producedUnit = true;
         }
         else if (robotType == 2 && rc.canBuildRobot(UnitType.SPLASHER, nextLoc)){
             // rc.buildRobot(UnitType.SPLASHER, nextLoc);
@@ -175,7 +178,8 @@ public class RobotPlayer {
             if (rc.canUpgradeTower(ruinLoc))
               rc.upgradeTower(ruinLoc);
           // ignore those that already have a tower
-          if ((rc.senseNearbyRobots(ruinLoc, 0, myTeam).length == 0) && (rc.senseNearbyRobots(ruinLoc, 0, enemyTeam).length == 0)) {
+          if ((rc.senseNearbyRobots(ruinLoc, 0, myTeam).length == 0) && (rc.senseNearbyRobots(ruinLoc, 0, enemyTeam).length == 0)
+              && rc.getNumberTowers() < 25) {
             // see if this is closer than curRuin
             if (curRuin == null || curRuin.distanceSquaredTo(me) > ruinLoc.distanceSquaredTo(me))
               curRuin = ruinLoc;
@@ -191,6 +195,8 @@ public class RobotPlayer {
             if (rng.nextInt(10) >= 4) tower = UnitType.LEVEL_ONE_MONEY_TOWER;
             // prioritize paint towers if we have > 5000 gold
             if (rc.getMoney() > 5000) tower = UnitType.LEVEL_THREE_PAINT_TOWER;
+            // start with money tower
+            if (rc.getNumberTowers() < 3) tower = UnitType.LEVEL_ONE_MONEY_TOWER;
             if (rc.senseMapInfo(shouldBeMarked).getMark() == PaintType.EMPTY && rc.canMarkTowerPattern(tower, curRuin)){
                 rc.markTowerPattern(tower, curRuin);
                 System.out.println("Trying to build a tower at " + curRuin);
@@ -217,8 +223,13 @@ public class RobotPlayer {
                 rc.setTimelineMarker("Tower built", 0, 255, 0);
                 System.out.println("Built a tower at " + curRuin + "!");
             }
-            // try to move toward ruin if more than sqrt(8) away
-            if (me.distanceSquaredTo(curRuin) > 8 && rc.canMove(dir)) rc.move(dir);
+            if (rc.getMoney() > 1000) {
+              // try to move toward ruin if more than sqrt(3) away
+              if (me.distanceSquaredTo(curRuin) > 3 && rc.canMove(dir)) rc.move(dir);
+              // also try to revolve around tower
+              else if (rc.canMove(dir.rotateRight())) rc.move(dir.rotateRight());
+              else if (rc.canMove(dir.rotateLeft())) rc.move(dir.rotateRight());
+            }
         }
         // highest attack priority -- attack a tower
         for (RobotInfo enemy : rc.senseNearbyRobots(rc.getType().actionRadiusSquared, enemyTeam)) {
