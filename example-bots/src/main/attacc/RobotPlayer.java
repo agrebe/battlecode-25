@@ -234,6 +234,15 @@ public class RobotPlayer {
         }
       }
       if (bestTarget != null && rc.canAttack(bestTarget)) rc.attack(bestTarget);
+      // withdraw paint from towers if less than half full
+      // don't do this if we have infinity money (can just build new robot)
+      if (rc.getPaint() < rc.getType().paintCapacity / 2 && rc.getMoney() < 5000) {
+        // see if we can withdraw from any direction
+        int missingPaint = -(rc.getType().paintCapacity - rc.getPaint());
+        for (Direction dir : directions)
+          if (rc.canTransferPaint(me.add(dir), missingPaint))
+            rc.transferPaint(me.add(dir), missingPaint);
+      }
     }
 
 
@@ -363,6 +372,15 @@ public class RobotPlayer {
               rc.attack(info.getMapLocation());
               break;
             }
+        }
+        // withdraw paint from towers if less than half full
+        // don't do this if we have infinity money (can just build new robot)
+        if (rc.getPaint() < rc.getType().paintCapacity / 2 && rc.getMoney() < 5000) {
+          // see if we can withdraw from any direction
+          int missingPaint = -(rc.getType().paintCapacity - rc.getPaint());
+          for (Direction dir : directions)
+            if (rc.canTransferPaint(me.add(dir), missingPaint))
+              rc.transferPaint(me.add(dir), missingPaint);
         }
     }
 
