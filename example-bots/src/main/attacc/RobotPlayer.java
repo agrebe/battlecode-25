@@ -90,7 +90,7 @@ public class RobotPlayer {
                 switch (rc.getType()){
                     case SOLDIER: runSoldier(rc); break; 
                     case MOPPER: runMopper(rc); break;
-                    case SPLASHER: break; // Consider upgrading examplefuncsplayer to use splashers!
+                    case SPLASHER: runSplasher(rc); break;
                     default: runTower(rc); break;
                     }
                 }
@@ -137,11 +137,15 @@ public class RobotPlayer {
 
         // don't build if we have < 200 paint (since otherwise we will never build soldiers)
         if (rc.getPaint() < 200 && (rc.getType() != UnitType.LEVEL_ONE_MONEY_TOWER)) return;
+        // increase threshold to 300 on round 200 to build splashers
+        if (rc.getPaint() < 300 && rc.getRoundNum() > 200 && (rc.getType() != UnitType.LEVEL_ONE_MONEY_TOWER)) return;
         // Pick a direction to build in.
         Direction dir = directions[rng.nextInt(directions.length)];
         MapLocation nextLoc = rc.getLocation().add(dir);
         // Pick a random robot type to build.
-        int robotType = rng.nextInt(2);
+        int robotTypes = 2;
+        if (rc.getRoundNum() > 200 && rng.nextInt(3) == 0) robotTypes ++; // activate splashers (but 1/3 as likely as others)
+        int robotType = rng.nextInt(robotTypes);
         if (robotType == 0 && rc.canBuildRobot(UnitType.SOLDIER, nextLoc)){
             rc.buildRobot(UnitType.SOLDIER, nextLoc);
             System.out.println("BUILT A SOLDIER");
@@ -154,9 +158,9 @@ public class RobotPlayer {
             producedUnit = true;
         }
         else if (robotType == 2 && rc.canBuildRobot(UnitType.SPLASHER, nextLoc)){
-            // rc.buildRobot(UnitType.SPLASHER, nextLoc);
-            // System.out.println("BUILT A SPLASHER");
-            rc.setIndicatorString("SPLASHER NOT IMPLEMENTED YET");
+            rc.buildRobot(UnitType.SPLASHER, nextLoc);
+            System.out.println("BUILT A SPLASHER");
+            producedUnit = true;
         }
 
         // Read incoming messages
@@ -165,6 +169,71 @@ public class RobotPlayer {
             System.out.println("Tower received message: '#" + m.getSenderID() + " " + m.getBytes());
         }
 
+    }
+
+    /**
+     * Run a single turn for a Splasher.
+     * This code is wrapped inside the infinite loop in run(), so it is called once per turn.
+     */
+    public static void runSplasher(RobotController rc) throws GameActionException{
+      MapLocation me = rc.getLocation();
+      Team myTeam = rc.getTeam();
+      Team enemyTeam = myTeam.opponent();
+      // Sense information about all visible nearby tiles.
+      MapInfo[] nearbyTiles = rc.senseNearbyMapInfos();
+
+      // run away from nearby moppers
+      for (RobotInfo enemy : rc.senseNearbyRobots(9, enemyTeam)) {
+        if (enemy.type == UnitType.MOPPER) {
+          Direction dir = enemy.location.directionTo(me);
+          if (rc.canMove(dir)) rc.move(dir);
+        }
+      }
+      // move toward enemy painted tiles
+      MapLocation closestEnemy = null;
+      if (rc.isActionReady() && closestEnemy == null) {
+        // set closest enemy to be enemy paint rather than enemy robot
+        for (MapInfo enemy : nearbyTiles)
+          if ((closestEnemy == null || enemy.getMapLocation().distanceSquaredTo(me) < closestEnemy.distanceSquaredTo(me))
+              && enemy.getPaint().isEnemy())
+            closestEnemy = enemy.getMapLocation();
+      }
+      if (closestEnemy != null) {
+        Direction dir = me.directionTo(closestEnemy);
+        if (rc.canMove(dir)) rc.move(dir);
+      }
+
+      // Move and attack randomly if no objective.
+      {
+        Direction dir = directions[rng.nextInt(directions.length)];
+        MapLocation nextLoc = rc.getLocation().add(dir);
+        // don't move onto enemy paint
+        if (rc.canMove(dir) && !rc.senseMapInfo(nextLoc).getPaint().isEnemy()){
+            rc.move(dir);
+        }
+        // bias toward moving toward center of map
+        dir = towardCenter;
+        if (rc.canMove(dir) && rc.senseMapInfo(rc.getLocation().add(dir)).getPaint().isAlly())
+            rc.move(dir);
+      }
+      if (!rc.isActionReady()) return;
+      // paint over enemy tiles
+      // evaluation of goodness of attack
+      MapLocation bestTarget = null;
+      int bestScore = 10; // minimum score -- anything less is waste of paint
+      for (MapLocation target : rc.getAllLocationsWithinRadiusSquared(me, rc.getType().actionRadiusSquared)) {
+        int score = 0;
+        // locations that don't have ally paint
+        for (MapInfo nearbyLoc : rc.senseNearbyMapInfos(target, 4))
+          if (nearbyLoc.isPassable() && !nearbyLoc.getPaint().isAlly()) score += 1;
+        for (MapInfo nearbyLoc : rc.senseNearbyMapInfos(target, 2))
+          if (nearbyLoc.isPassable() && nearbyLoc.getPaint().isEnemy()) score += 1;
+        if (score > bestScore) {
+          bestScore = score;
+          bestTarget = target;
+        }
+      }
+      if (bestTarget != null && rc.canAttack(bestTarget)) rc.attack(bestTarget);
     }
 
 
